@@ -1,0 +1,4 @@
+# Keep LF everywhere, so the zip and the plugin install have the same bytes on every OS.
+* text=auto eol=lf
+*.png binary
+*.zip binary

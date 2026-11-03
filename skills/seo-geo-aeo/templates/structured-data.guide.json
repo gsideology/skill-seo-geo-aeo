@@ -1,0 +1,71 @@
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://example.com/#organization",
+      "name": "Example Tools",
+      "url": "https://example.com/",
+      "logo": { "@type": "ImageObject", "url": "https://example.com/logo-512.png", "width": 512, "height": 512 },
+      "sameAs": ["https://www.wikidata.org/wiki/Q00000000", "https://github.com/example/example-tools"]
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://example.com/#website",
+      "url": "https://example.com/",
+      "name": "Example Tools",
+      "inLanguage": "en",
+      "publisher": { "@id": "https://example.com/#organization" }
+    },
+    {
+      "@type": "Person",
+      "@id": "https://example.com/about#jane-doe",
+      "name": "Jane Doe",
+      "url": "https://example.com/about#jane-doe",
+      "sameAs": ["https://github.com/janedoe"]
+    },
+    {
+      "@type": "WebPage",
+      "@id": "https://example.com/blog/how-to-merge-pdf-files#webpage",
+      "url": "https://example.com/blog/how-to-merge-pdf-files",
+      "name": "How to merge PDF files without uploading them",
+      "inLanguage": "en",
+      "isPartOf": { "@id": "https://example.com/#website" },
+      "breadcrumb": { "@id": "https://example.com/blog/how-to-merge-pdf-files#breadcrumb" }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "@id": "https://example.com/blog/how-to-merge-pdf-files#breadcrumb",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://example.com/" },
+        { "@type": "ListItem", "position": 2, "name": "Guides", "item": "https://example.com/blog" },
+        { "@type": "ListItem", "position": 3, "name": "How to merge PDF files", "item": "https://example.com/blog/how-to-merge-pdf-files" }
+      ]
+    },
+    {
+      "@type": "BlogPosting",
+      "@id": "https://example.com/blog/how-to-merge-pdf-files#article",
+      "headline": "How to merge PDF files without uploading them",
+      "description": "Step-by-step guide, measured with real files: what changes in size and quality when PDFs are merged in the browser.",
+      "mainEntityOfPage": { "@id": "https://example.com/blog/how-to-merge-pdf-files#webpage" },
+      "author": { "@id": "https://example.com/about#jane-doe" },
+      "publisher": { "@id": "https://example.com/#organization" },
+      "inLanguage": "en",
+      "datePublished": "2026-10-20",
+      "dateModified": "2026-11-03",
+      "image": "https://example.com/blog/how-to-merge-pdf-files/cover.webp"
+    },
+    {
+      "@type": "FAQPage",
+      "@id": "https://example.com/blog/how-to-merge-pdf-files#faq",
+      "isPartOf": { "@id": "https://example.com/blog/how-to-merge-pdf-files#webpage" },
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Are my PDF files uploaded when I merge them?",
+          "acceptedAnswer": { "@type": "Answer", "text": "No. The merge runs in your browser and the files never leave your device." }
+        }
+      ]
+    }
+  ]
+}

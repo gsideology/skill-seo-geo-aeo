@@ -1,0 +1,11 @@
+# Fixture Tools
+
+> Fixture tools for testing the seo-geo-aeo skill checks: no sign-up, no upload.
+
+## Tools
+
+- [Merge PDF]({{ORIGIN}}/merge-pdf.html): Combine several PDF files into one.
+
+## For AI agents
+
+- MCP server: `{{ORIGIN}}/mcp.php` (remote, Streamable HTTP, no sign-in).

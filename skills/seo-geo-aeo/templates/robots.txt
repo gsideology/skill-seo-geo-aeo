@@ -1,0 +1,41 @@
+# robots.txt template (RFC 9309). Replace example.com and the private paths; decide each choice
+# marked CHOICE with the site owner and write the decision down with the date.
+#
+# How matching works: a crawler uses the group(s) that name its token; only if none does it uses
+# "User-agent: *". A named group does NOT inherit the rules of "*", so every named group repeats
+# the paths that must stay private. Longest matching path wins; on a tie Allow wins.
+# robots.txt is public and is not access control: protect private pages with authentication.
+# Crawler tokens checked against the vendors' pages on 2026-11-03 (references/ai-crawlers.md).
+
+# Everyone, including search engines (Googlebot, Bingbot) and AI search crawlers without their own group.
+User-agent: *
+Disallow: /admin/
+Disallow: /api/internal/
+
+# AI search crawlers: needed to appear and be cited in ChatGPT search, Claude and Perplexity answers.
+# They would also fall under "*"; naming them keeps the intent explicit. Keep their rules equal to "*".
+User-agent: OAI-SearchBot
+User-agent: Claude-SearchBot
+User-agent: PerplexityBot
+Disallow: /admin/
+Disallow: /api/internal/
+
+# Fetchers that act for a user who asked about a page (ChatGPT-User, Claude-User, Perplexity-User).
+# OpenAI and Perplexity say robots.txt may not apply to them; block them at the server if you must.
+User-agent: ChatGPT-User
+User-agent: Claude-User
+User-agent: Perplexity-User
+Disallow: /admin/
+Disallow: /api/internal/
+
+# CHOICE: training crawlers. No documented effect on search inclusion. Allow (as below) or replace
+# the Disallow lines with "Disallow: /" to opt out of future training.
+# Google-Extended is a robots.txt token, not a crawler: it controls Gemini training and grounding
+# outside Google Search and does not affect Search.
+User-agent: GPTBot
+User-agent: ClaudeBot
+User-agent: Google-Extended
+Disallow: /admin/
+Disallow: /api/internal/
+
+Sitemap: https://example.com/sitemap.xml

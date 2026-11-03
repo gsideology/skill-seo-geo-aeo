@@ -1,0 +1,58 @@
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://example.com/#organization",
+      "name": "Example Tools",
+      "url": "https://example.com/",
+      "logo": { "@type": "ImageObject", "url": "https://example.com/logo-512.png", "width": 512, "height": 512 },
+      "sameAs": [
+        "https://www.wikidata.org/wiki/Q00000000",
+        "https://github.com/example/example-tools",
+        "https://www.linkedin.com/company/example-tools"
+      ]
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://example.com/#website",
+      "url": "https://example.com/",
+      "name": "Example Tools",
+      "inLanguage": "en",
+      "publisher": { "@id": "https://example.com/#organization" }
+    },
+    {
+      "@type": "WebPage",
+      "@id": "https://example.com/merge-pdf#webpage",
+      "url": "https://example.com/merge-pdf",
+      "name": "Merge PDF: combine PDF files in your browser | Example Tools",
+      "description": "Combine several PDF files into one in the order you choose. Runs in your browser: files are never uploaded.",
+      "inLanguage": "en",
+      "isPartOf": { "@id": "https://example.com/#website" },
+      "breadcrumb": { "@id": "https://example.com/merge-pdf#breadcrumb" },
+      "mainEntity": { "@id": "https://example.com/merge-pdf#app" },
+      "dateModified": "2026-11-03"
+    },
+    {
+      "@type": "BreadcrumbList",
+      "@id": "https://example.com/merge-pdf#breadcrumb",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://example.com/" },
+        { "@type": "ListItem", "position": 2, "name": "PDF tools", "item": "https://example.com/pdf" },
+        { "@type": "ListItem", "position": 3, "name": "Merge PDF", "item": "https://example.com/merge-pdf" }
+      ]
+    },
+    {
+      "@type": "WebApplication",
+      "@id": "https://example.com/merge-pdf#app",
+      "name": "Merge PDF",
+      "url": "https://example.com/merge-pdf",
+      "applicationCategory": "UtilitiesApplication",
+      "operatingSystem": "Any",
+      "browserRequirements": "Requires a modern browser with JavaScript",
+      "isAccessibleForFree": true,
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+      "publisher": { "@id": "https://example.com/#organization" }
+    }
+  ]
+}

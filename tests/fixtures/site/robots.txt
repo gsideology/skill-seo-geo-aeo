@@ -1,0 +1,9 @@
+# Fixture robots.txt for the tests (served by php -S).
+User-agent: *
+Disallow: /admin/
+
+User-agent: GPTBot
+Disallow: /admin/
+Disallow: /drafts/
+
+Sitemap: {{ORIGIN}}/sitemap.xml

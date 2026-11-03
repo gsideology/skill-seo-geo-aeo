@@ -1,0 +1,16 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/v1/server-card.schema.json",
+  "name": "com.example/tools",
+  "version": "1.0.0",
+  "title": "Example Tools",
+  "description": "Find the right Example Tools page for a task; returns names and links, never files.",
+  "websiteUrl": "https://example.com/ai-assistants",
+  "icons": [{ "src": "https://example.com/icon-512.png", "mimeType": "image/png", "sizes": ["512x512"] }],
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://example.com/mcp",
+      "supportedProtocolVersions": ["2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05"]
+    }
+  ]
+}

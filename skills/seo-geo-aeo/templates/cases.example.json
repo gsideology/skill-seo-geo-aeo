@@ -1,0 +1,18 @@
+[
+  { "q": "compress pdf", "top": "compress-pdf", "lang": "en" },
+  { "q": "jpg to pdf", "top": "image-to-pdf" },
+  { "q": "pdf to jpg", "top": "pdf-to-jpg" },
+  { "q": "find a tool to merge my pdf files", "top": "merge-pdf", "lang": "en" },
+  { "q": "trova uno strumento per unire dei PDF", "top": "merge-pdf", "lang": "it" },
+  { "q": "je veux fusionner des pdf", "top": "merge-pdf", "lang": "fr" },
+  { "q": "ich möchte ein Bild komprimieren", "top": "image-compressor", "lang": "de" },
+  { "q": "convert audio to mp3", "in3": "audio-converter" },
+  { "q": "unir pdf", "language": "es", "top": "merge-pdf" },
+  { "q": "xyzzy plugh", "none": true },
+  { "q": "zzzz pdf qqqq", "partial": true },
+  { "tool": "get_tool", "args": { "slug": "MERGE-PDF" }, "expect": { "slug": "merge-pdf" } },
+  { "tool": "get_tool", "args": { "slug": "https://example.com/it/unire-pdf?ref=x#top", "language": "it" }, "expect": { "slug": "merge-pdf" } },
+  { "tool": "get_tool", "args": { "slug": "no-such-tool" }, "isError": true },
+  { "tool": "find_tools", "args": { "query": "pdf", "extra": 1 }, "isError": true },
+  { "tool": "find_tools", "args": { "query": "" }, "isError": true }
+]

@@ -1,0 +1,19 @@
+{
+ "$schema": "https://static.modelcontextprotocol.io/schemas/v1/server-card.schema.json",
+ "name": "test.fixture/tools",
+ "version": "1.0.0",
+ "title": "Fixture Tools",
+ "description": "Fixture MCP server for the skill's tests.",
+ "remotes": [
+  {
+   "type": "streamable-http",
+   "url": "{{ORIGIN}}/mcp.php",
+   "supportedProtocolVersions": [
+    "2025-11-25",
+    "2025-06-18",
+    "2025-03-26",
+    "2024-11-05"
+   ]
+  }
+ ]
+}

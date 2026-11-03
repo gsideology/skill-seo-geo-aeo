@@ -1,0 +1,7 @@
+question_id,language,intent,question,expected_page,run_date,assistant,mode,run,cited,cited_url,mentioned,accurate,competitors_cited,answer_link_or_screenshot,notes
+q01,en,brand,What is Example Tools?,https://example.com/,,,,,,,,,,,
+q02,en,category,What is a free tool to merge PDF files without uploading them?,https://example.com/merge-pdf,,,,,,,,,,,
+q03,en,task,How do I remove EXIF data from a photo before sharing it?,https://example.com/exif-remover,,,,,,,,,,,
+q04,en,comparison,Example Tools vs OtherTool for compressing PDFs: which keeps files private?,https://example.com/compare/othertool,,,,,,,,,,,
+q05,en,problem,Why is my PDF too large to email and how can I make it smaller?,https://example.com/blog/reduce-pdf-size,,,,,,,,,,,
+q06,it,category,Esiste uno strumento gratuito per unire PDF senza caricarli online?,https://example.com/it/unire-pdf,,,,,,,,,,,

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
+  <url>
+    <loc>https://example.com/a</loc>
+    <lastmod>2026-13-45</lastmod>
+    <xhtml:link rel="alternate" hreflang="it" href="https://example.com/it/a"/>
+  </url>
+  <url>
+    <loc>https://example.com/it/a</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://example.com/it/a"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://example.com/a"/>
+  </url>
+  <url>
+    <loc>https://example.com/a</loc>
+  </url>
+  <url>
+    <loc>https://other.example.org/b</loc>
+  </url>
+</urlset>

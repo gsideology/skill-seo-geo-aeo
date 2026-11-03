@@ -1,0 +1,90 @@
+[
+ {
+  "slug": "merge-pdf",
+  "name": "PDF zusammenfügen",
+  "description": "Mehrere PDF-Dateien zu einer Datei zusammenfügen.",
+  "category": "pdf",
+  "url": "/de/pdf-zusammenfuegen",
+  "agentTools": [],
+  "keywords": [
+   "pdf zusammenfügen",
+   "pdf verbinden",
+   "merge pdf",
+   "combine pdf",
+   "join pdf files"
+  ]
+ },
+ {
+  "slug": "compress-pdf",
+  "name": "PDF komprimieren",
+  "description": "Ein PDF verkleinern, indem die Bilder neu komprimiert werden.",
+  "category": "pdf",
+  "url": "/de/pdf-komprimieren",
+  "agentTools": [],
+  "keywords": [
+   "pdf komprimieren",
+   "pdf verkleinern",
+   "compress pdf",
+   "reduce pdf size",
+   "shrink pdf"
+  ]
+ },
+ {
+  "slug": "image-to-pdf",
+  "name": "Bild zu PDF",
+  "description": "JPG-, PNG- oder WebP-Bilder in ein PDF-Dokument umwandeln.",
+  "category": "pdf",
+  "url": "/de/bild-zu-pdf",
+  "agentTools": [],
+  "keywords": [
+   "bild zu pdf",
+   "jpg zu pdf",
+   "jpg to pdf",
+   "png to pdf",
+   "images to pdf"
+  ]
+ },
+ {
+  "slug": "pdf-to-jpg",
+  "name": "PDF zu JPG",
+  "description": "Jede Seite eines PDF als JPG-Bild speichern.",
+  "category": "pdf",
+  "url": "/de/pdf-zu-jpg",
+  "agentTools": [],
+  "keywords": [
+   "pdf zu jpg",
+   "pdf zu bild",
+   "pdf to jpg",
+   "pdf to image"
+  ]
+ },
+ {
+  "slug": "image-compressor",
+  "name": "Bild komprimieren",
+  "description": "JPG-, PNG- und WebP-Bilder im Browser komprimieren.",
+  "category": "image",
+  "url": "/de/bild-komprimieren",
+  "agentTools": [],
+  "keywords": [
+   "bild komprimieren",
+   "bild verkleinern",
+   "compress image",
+   "reduce image size"
+  ]
+ },
+ {
+  "slug": "audio-converter",
+  "name": "Audio-Konverter",
+  "description": "Audiodateien zwischen MP3, WAV, OGG und FLAC umwandeln.",
+  "category": "audio",
+  "url": "/de/audio-konverter",
+  "agentTools": [],
+  "keywords": [
+   "audio umwandeln",
+   "audio zu mp3",
+   "convert audio",
+   "audio to mp3",
+   "mp3 converter"
+  ]
+ }
+]

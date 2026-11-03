@@ -1,0 +1,17 @@
+{
+  "specVersion": "1.0",
+  "host": {
+    "displayName": "Example Tools",
+    "identifier": "example.com",
+    "documentationUrl": "https://example.com/agents.md"
+  },
+  "entries": [
+    {
+      "identifier": "urn:air:example.com:mcp:tools",
+      "type": "application/mcp-server-card+json",
+      "url": "https://example.com/mcp/server-card",
+      "description": "Finds the right Example Tools page for a task and returns its link; never receives files.",
+      "representativeQueries": ["merge pdf files", "compress an image without uploading it", "convert json to yaml"]
+    }
+  ]
+}

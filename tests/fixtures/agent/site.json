@@ -1,0 +1,24 @@
+{
+ "id": "fixture-tools",
+ "name": "Fixture Tools",
+ "url": "{{ORIGIN}}",
+ "count": 6,
+ "categories": [
+  {
+   "id": "pdf",
+   "name": "PDF"
+  },
+  {
+   "id": "image",
+   "name": "Image"
+  },
+  {
+   "id": "audio",
+   "name": "Audio"
+  }
+ ],
+ "examples": [
+  "merge pdf",
+  "compress image"
+ ]
+}

@@ -1,0 +1,10 @@
+{
+  "name": "seo-geo-aeo",
+  "displayName": "SEO, GEO, AEO and agentic navigation",
+  "version": "1.0.0",
+  "description": "Make a website findable, citable and usable by search engines, AI answer engines and AI agents: SEO audits and fixes, GEO/AEO, AI crawler access, llms.txt and agents.md, WebMCP, a remote MCP server and discovery, with a test, fix and retest loop and dependency-free check scripts.",
+  "author": { "name": "gsideology", "url": "https://github.com/gsideology" },
+  "homepage": "https://github.com/gsideology/skill-seo-geo-aeo",
+  "repository": "https://github.com/gsideology/skill-seo-geo-aeo",
+  "keywords": ["seo", "geo", "aeo", "ai-search", "llms-txt", "structured-data", "hreflang", "sitemap", "robots-txt", "ai-crawlers", "webmcp", "mcp", "indexnow"]
+}

@@ -1,0 +1,14 @@
+{
+  "name": "skill-seo-geo-aeo",
+  "description": "The seo-geo-aeo skill for Claude Code: SEO, GEO, AEO and agentic navigation for websites, with tests.",
+  "owner": { "name": "gsideology", "url": "https://github.com/gsideology" },
+  "plugins": [
+    {
+      "name": "seo-geo-aeo",
+      "source": "./",
+      "description": "SEO audits and fixes, GEO/AEO, AI crawler access, llms.txt, agents.md, WebMCP, MCP servers for websites and Server Card / ai-catalog.json discovery, with check scripts.",
+      "category": "web",
+      "tags": ["seo", "geo", "aeo", "mcp", "webmcp"]
+    }
+  ]
+}
