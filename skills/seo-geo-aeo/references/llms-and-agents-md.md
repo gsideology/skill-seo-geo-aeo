@@ -56,7 +56,7 @@ Write the "For AI agents" section only for things that exist and work; keep the 
 
 ## agents.md
 
-Plain Markdown, served as `text/markdown; charset=utf-8` (add the MIME type on Apache/LiteSpeed: `AddType "text/markdown; charset=utf-8" .md`). Template: `templates/agents.md`. Sections:
+Plain Markdown, served as `text/markdown; charset=utf-8` (add the MIME type on Apache/LiteSpeed: `AddType "text/markdown; charset=utf-8" .md`). Template: `templates/agents.template.md` (publish it as `/agents.md`; the template name keeps coding agents from loading it as instructions for this repository). Sections:
 
 1. **One-paragraph summary** of the site (what, how many tools, privacy promise).
 2. **How to help the user**: pick a tool and give the link; don't ask the user to upload their files to the assistant; which languages exist and how to get the right link; how to choose (MCP server or `llms.txt`).

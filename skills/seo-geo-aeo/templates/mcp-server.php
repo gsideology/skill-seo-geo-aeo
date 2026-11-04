@@ -11,7 +11,8 @@
 //                                      "url":"/merge-pdf","agentTools":["merge_pdfs"],"keywords":["merge pdf","combine pdf"]}]
 //                                     url is the page path in that locale (e.g. "/it/unire-pdf"); localized indexes
 //                                     should also carry the default-language keywords.
-// Routing (Apache/LiteSpeed .htaccess, before other rewrites): RewriteRule ^mcp$ /path/to/mcp-server.php [L]
+//   MCP_DATA_DIR/server-card.json     optional MCP Server Card (templates/server-card.example.json), served at /mcp/server-card
+// Routing (Apache/LiteSpeed .htaccess, before other rewrites): RewriteRule ^mcp(/server-card)?$ /path/to/mcp-server.php [L]
 // Test: node scripts/mcp_smoke_test.mjs https://example.com/mcp
 
 declare(strict_types=1);
@@ -395,6 +396,30 @@ function mcp_describe(bool $html): never
 
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 $accept = strtolower((string) ($_SERVER['HTTP_ACCEPT'] ?? ''));
+
+// MCP Server Card at the recommended <endpoint>/server-card (SEP-2127), from MCP_DATA_DIR/server-card.json.
+// Reached through PATH_INFO (/mcp.php/server-card) or a rewrite (RewriteRule ^mcp/server-card$ … [L]).
+$path = (string) ($_SERVER['PATH_INFO'] ?? parse_url((string) ($_SERVER['REQUEST_URI'] ?? ''), PHP_URL_PATH));
+if (($method === 'GET' || $method === 'HEAD') && str_ends_with(rtrim($path, '/'), '/server-card')) {
+    $card = is_file(MCP_DATA_DIR . '/server-card.json') ? file_get_contents(MCP_DATA_DIR . '/server-card.json') : false;
+    if ($card === false) {
+        http_response_code(404);
+        header('Content-Type: text/plain; charset=utf-8');
+        echo "No server card configured.\n";
+        exit;
+    }
+    $etag = '"' . md5($card) . '"';
+    header('Content-Type: application/mcp-server-card+json');
+    header('Cache-Control: public, max-age=300');
+    header('Access-Control-Allow-Origin: *');
+    header("ETag: $etag");
+    if (trim((string) ($_SERVER['HTTP_IF_NONE_MATCH'] ?? '')) === $etag) {
+        http_response_code(304);
+        exit;
+    }
+    if ($method === 'GET') echo $card;
+    exit;
+}
 if (($method === 'GET' || $method === 'HEAD') && !str_contains($accept, 'text/event-stream')) {
     try {
         mcp_describe(str_contains($accept, 'text/html'));

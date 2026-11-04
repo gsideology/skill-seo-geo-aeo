@@ -99,7 +99,7 @@ In Git Bash on Windows, write paths without a leading slash (`--paths .,pricing`
 | `templates/cases.example.json` | Reference cases for `mcp_smoke_test.mjs` (searches with expected results, slug forms, error cases) |
 | `templates/server-card.example.json`, `templates/ai-catalog.example.json` | MCP Server Card and AI Catalog for pre-connection discovery |
 | `templates/webmcp-register.ts`, `templates/webmcp-shim.js` | WebMCP registration helpers; late activation from the console or a browser agent |
-| `templates/agents.md`, `templates/ai-assistants-page.md` | Guide for agents; human page with connection steps and a Markdown snippet |
+| `templates/agents.template.md`, `templates/ai-assistants-page.md` | Guide for agents; human page with connection steps and a Markdown snippet |
 | `templates/htaccess-snippets.conf` | Apache/LiteSpeed: dotfiles, `/mcp` rewrite, canonical without slash, `.html` mapping, Markdown MIME, cache and security headers |
 
 Adapt names, languages and stop words to the site; keep the behaviours.

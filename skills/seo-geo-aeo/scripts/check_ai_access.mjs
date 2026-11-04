@@ -94,8 +94,19 @@ export function isAllowed(rules, pathAndQuery) {
 
 /* ------------------------------------------------------------------ HTML helpers */
 
-const decode = (s) => s.replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'").replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Number(n)));
-const attr = (tag, name) => decode(tag.match(new RegExp(`\\s${name}\\s*=\\s*"([^"]*)"`, "i"))?.[1] ?? tag.match(new RegExp(`\\s${name}\\s*=\\s*'([^']*)'`, "i"))?.[1] ?? "");
+const ENTITIES = { nbsp: " ", amp: "&", lt: "<", gt: ">", quot: '"', apos: "'" };
+/** Decodes the common named entities and decimal/hex character references in one pass (no double decoding). */
+export const decode = (s) =>
+  s.replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (m, e) => {
+    if (e[0] !== "#") return ENTITIES[e.toLowerCase()] ?? m;
+    const n = e[1] === "x" || e[1] === "X" ? parseInt(e.slice(2), 16) : Number(e.slice(1));
+    return n > 0 && n <= 0x10ffff ? String.fromCodePoint(n) : m;
+  });
+/** An attribute's value: double-quoted, single-quoted or unquoted (minified HTML often drops the quotes). */
+export const attr = (tag, name) => {
+  const m = tag.match(new RegExp(`\\s${name}\\s*=\\s*(?:"([^"]*)"|'([^']*)'|([^\\s"'=<>\`]+))`, "i"));
+  return decode(m ? (m[1] ?? m[2] ?? m[3]) : "");
+};
 
 /** Words of text in the HTML as served, without scripts, styles and templates. */
 export function serverTextWords(html) {
@@ -176,7 +187,17 @@ async function main() {
   let parsed = { groups: [], sitemaps: [] };
   let robotsOk = true;
   try {
-    const r = await get(`${base.origin}/robots.txt`);
+    // RFC 9309 2.3.1.2: crawlers follow at least five consecutive redirects (http → https, www, …).
+    let robotsUrl = `${base.origin}/robots.txt`;
+    let r = await get(robotsUrl);
+    const hops = [];
+    while (r.status >= 300 && r.status < 400 && r.headers.get("location") && hops.length < 5) {
+      await r.body?.cancel();
+      robotsUrl = new URL(r.headers.get("location"), robotsUrl).href;
+      hops.push(`${r.status} → ${robotsUrl}`);
+      r = await get(robotsUrl);
+    }
+    if (hops.length && r.status === 200) say("INFO", `robots.txt redirects (${hops.join(", ")}); crawlers follow up to five redirects, but check that this host is the canonical one`);
     if (r.status === 200) {
       parsed = parseRobots(await r.text());
       say("PASS", `HTTP 200, ${parsed.groups.length} group(s)`);
@@ -186,7 +207,7 @@ async function main() {
     } else {
       await r.body?.cancel();
       robotsOk = false;
-      say("FAIL", `HTTP ${r.status}${r.headers.get("location") ? ` → ${r.headers.get("location")}` : ""}: a 5xx or unreachable robots.txt makes RFC 9309 crawlers assume everything is disallowed; redirects should end at a 200`);
+      say("FAIL", `HTTP ${r.status}${r.headers.get("location") ? ` → ${r.headers.get("location")}` : ""}${hops.length ? ` after ${hops.length} redirect(s)` : ""}: a 5xx or unreachable robots.txt makes RFC 9309 crawlers assume everything is disallowed; redirects should end at a 200 within five hops`);
     }
   } catch (e) {
     robotsOk = false;

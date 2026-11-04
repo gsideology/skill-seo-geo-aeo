@@ -10,6 +10,7 @@
 // Exit code 1 when something fails. Sitemap index files are followed.
 
 import { readFileSync } from "node:fs";
+import { inspectHtml } from "./check_ai_access.mjs";
 
 const args = process.argv.slice(2);
 const source = args.find((a) => !a.startsWith("--"));
@@ -22,7 +23,14 @@ if (!source) {
   console.error("Usage: node check_sitemap.mjs <sitemap URL or file> [--fetch] [--canonical] [--concurrency 6] [--trailing-slash]");
   process.exit(2);
 }
+const concurrency = Number(opt("concurrency", 6));
+if (!Number.isInteger(concurrency) || concurrency < 1) {
+  console.error(`--concurrency must be a positive integer (got "${opt("concurrency")}")`);
+  process.exit(2);
+}
 const UA = "Mozilla/5.0 (compatible; sitemap-check/1.0)";
+const TIMEOUT = 20_000;
+const get = (url) => fetch(url, { headers: { "User-Agent": UA }, redirect: "manual", signal: AbortSignal.timeout(TIMEOUT) });
 const errors = [];
 const warnings = [];
 const fail = (s) => errors.push(s);
@@ -30,7 +38,7 @@ const warn = (s) => warnings.push(s);
 
 async function load(src) {
   if (/^https?:\/\//.test(src)) {
-    const r = await fetch(src, { headers: { "User-Agent": UA }, redirect: "manual" });
+    const r = await get(src);
     if (r.status !== 200) fail(`${src}: HTTP ${r.status}`);
     const type = r.headers.get("content-type") ?? "";
     if (!/xml/.test(type)) warn(`${src}: content-type "${type}" (expected application/xml or text/xml)`);
@@ -74,6 +82,8 @@ async function readSitemap(src, depth = 0) {
     for (const m of xml.matchAll(/<sitemap>([\s\S]*?)<\/sitemap>/g)) {
       const loc = decode(m[1].match(/<loc>\s*([^<]*?)\s*<\/loc>/)?.[1] ?? "");
       if (!loc) fail(`${where}: <sitemap> without <loc>`);
+      // Only absolute http(s) URLs: a <loc> like "/etc/passwd" must never make the script read a local file.
+      else if (!/^https?:\/\//i.test(loc)) fail(`${where}: <sitemap> <loc> is not an absolute http(s) URL: ${loc}`);
       else await readSitemap(loc, depth + 1);
     }
     return;
@@ -125,7 +135,7 @@ async function readSitemap(src, depth = 0) {
       const hl = attr(l[0], "hreflang");
       const href = attr(l[0], "href");
       if (rel !== "alternate") fail(`xhtml:link rel="${rel}" in ${u}`);
-      if (!/^([a-z]{2,3}(-[A-Za-z]{2,4})?|x-default)$/.test(hl)) fail(`bad hreflang "${hl}" in ${u}`);
+      if (!/^([a-z]{2,3}(-[a-z]{4})?(-([a-z]{2}|\d{3}))?|x-default)$/i.test(hl)) fail(`bad hreflang "${hl}" in ${u}`);
       if (alternates.has(hl)) fail(`hreflang ${hl} twice in ${u}`);
       alternates.set(hl, href);
     }
@@ -160,7 +170,6 @@ if (withAlternates) console.log(`hreflang: ${[...langs].map(([k, v]) => `${k} ${
 
 if (flag("fetch")) {
   const list = [...urls.keys()];
-  const concurrency = Number(opt("concurrency", 6));
   let next = 0;
   let ok = 0;
   const statuses = new Map();
@@ -168,13 +177,13 @@ if (flag("fetch")) {
     while (next < list.length) {
       const u = list[next++];
       try {
-        let r = await fetch(u, { headers: { "User-Agent": UA }, redirect: "manual" });
+        let r = await get(u);
         if (r.status !== 200) {
           // CDNs occasionally answer a 3xx/5xx once under load: retry before reporting it.
           const first = `${r.status}${r.headers.get("location") ? ` → ${r.headers.get("location")}` : ""}`;
           await r.body?.cancel();
           await new Promise((res) => setTimeout(res, 1500));
-          r = await fetch(u, { headers: { "User-Agent": UA }, redirect: "manual" });
+          r = await get(u);
           if (r.status === 200) warn(`${u}: transient HTTP ${first} on the first try, 200 on retry`);
         }
         statuses.set(r.status, (statuses.get(r.status) ?? 0) + 1);
@@ -184,9 +193,9 @@ if (flag("fetch")) {
           continue;
         }
         if (flag("canonical")) {
-          const html = await r.text();
-          const tag = html.match(/<link[^>]+rel=["']canonical["'][^>]*>/i)?.[0];
-          const href = tag ? attr(tag, "href") : null;
+          const xrt = r.headers.get("x-robots-tag") ?? "";
+          const h = inspectHtml(await r.text());
+          const href = h.canonical;
           // Compare normalized URLs: "https://example.com" and "https://example.com/" are the same address.
           const same = (a, b) => {
             try {
@@ -197,8 +206,7 @@ if (flag("fetch")) {
           };
           if (!href) warn(`${u}: no canonical link`);
           else if (!same(href, u)) fail(`${u}: canonical is ${href}`);
-          const robots = html.match(/<meta[^>]+name=["']robots["'][^>]*>/i)?.[0];
-          if (robots && /noindex/i.test(attr(robots, "content"))) fail(`${u}: noindex page in the sitemap`);
+          if (/noindex|(^|[\s,])none([\s,]|$)/i.test(`${xrt} ${h.robots}`)) fail(`${u}: noindex page in the sitemap (${[xrt && `X-Robots-Tag: ${xrt}`, h.robots && `meta: ${h.robots}`].filter(Boolean).join("; ")})`);
         } else await r.body?.cancel();
         ok++;
       } catch (e) {

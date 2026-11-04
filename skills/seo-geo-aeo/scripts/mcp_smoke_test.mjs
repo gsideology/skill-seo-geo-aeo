@@ -31,16 +31,35 @@ const record = (status, name, detail) => {
 const check = (name, ok, detail) => record(ok ? "PASS" : "FAIL", name, ok ? undefined : detail);
 const warnIf = (name, bad, detail) => bad && record("WARN", name, detail);
 let id = 1;
+// Set by the first successful initialize: servers with sessions require both on every later request.
+let sessionId = null;
+let protocolVersion = null;
+let headerIntercepted = false;
+const ASKED_VERSION = "2025-06-18";
 
 async function post(body, timeout = 20_000) {
   const t = performance.now();
-  const r = await fetch(endpoint, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Accept: "application/json, text/event-stream" },
-    body,
-    signal: AbortSignal.timeout(timeout),
-  });
-  const text = await r.text();
+  const headers = { "Content-Type": "application/json", Accept: "application/json, text/event-stream" };
+  if (sessionId) headers["Mcp-Session-Id"] = sessionId;
+  if (protocolVersion && !headerIntercepted) headers["MCP-Protocol-Version"] = protocolVersion;
+  const exchange = async () => {
+    const r = await fetch(endpoint, { method: "POST", headers, body, signal: AbortSignal.timeout(timeout) });
+    return { r, text: await r.text() };
+  };
+  let x;
+  try {
+    x = await exchange();
+    if (headers["MCP-Protocol-Version"] && x.r.status === 200 && x.text === "") throw new Error("terminated (empty 200)");
+  } catch (e) {
+    // Antivirus HTTP(S) scanning (e.g. AVG Web Shield) can cut any request carrying this header, even
+    // to localhost. Retry once without it and say so, instead of failing every later check.
+    if (!headers["MCP-Protocol-Version"] || !/terminated|ECONNRESET|socket/i.test(e.cause?.code ?? e.message)) throw e;
+    headerIntercepted = true;
+    record("WARN", "requests with the MCP-Protocol-Version header are cut on this computer: antivirus or proxy interception; the rest of the run omits the header (retest from another network)", "");
+    delete headers["MCP-Protocol-Version"];
+    x = await exchange();
+  }
+  const { r, text } = x;
   return { status: r.status, headers: r.headers, text, ms: performance.now() - t, type: r.headers.get("content-type") ?? "" };
 }
 function parse(text) {
@@ -56,11 +75,15 @@ function parse(text) {
     }
   }
 }
-async function rpc(method, params) {
+async function rpcRaw(method, params) {
   const r = await post(JSON.stringify({ jsonrpc: "2.0", id: id++, method, ...(params === undefined ? {} : { params }) }));
   if (!r.text) throw new Error(`HTTP ${r.status} with an empty body`);
-  return parse(r.text);
+  return { reply: parse(r.text), headers: r.headers };
 }
+const rpc = async (method, params) => (await rpcRaw(method, params)).reply;
+/** GET/OPTIONS helper that never throws: { error } on a network error or a timeout. */
+const tryFetch = (url, init = {}) => fetch(url, { ...init, signal: AbortSignal.timeout(20_000) }).catch((error) => ({ error }));
+const why = (e) => e?.cause?.code ?? e?.message ?? String(e);
 async function call(name, a) {
   const r = await rpc("tools/call", { name, arguments: a });
   if (r?.error) return { rpcError: r.error };
@@ -70,16 +93,21 @@ async function call(name, a) {
   return { isError: !!res.isError, text: res.content?.[0]?.text ?? "", data };
 }
 
-// Preflight: an empty or cut reply usually means something in between swallowed it.
+// Preflight with initialize (servers with sessions reject anything else first). An empty or cut
+// reply usually means something in between swallowed it.
 let reachable = true;
+let init;
 try {
-  const r = await rpc("ping");
-  if (!r) throw new Error("reply is not JSON");
+  const { reply, headers } = await rpcRaw("initialize", { protocolVersion: ASKED_VERSION, capabilities: {}, clientInfo: { name: "mcp-smoke-test", version: "1" } });
+  if (!reply) throw new Error("reply is not JSON");
+  init = reply;
+  sessionId = headers.get("mcp-session-id");
+  if (typeof reply.result?.protocolVersion === "string") protocolVersion = reply.result.protocolVersion;
 } catch (e) {
   reachable = false;
-  const why = e.cause?.code ?? e.message;
-  console.log(`FAIL cannot talk to ${endpoint}: ${why}`);
-  if (/terminated|empty body|ECONNRESET|chunk/i.test(why)) {
+  const reason = why(e);
+  console.log(`FAIL cannot talk to ${endpoint}: ${reason}`);
+  if (/terminated|empty body|ECONNRESET|chunk/i.test(reason)) {
     console.log("     The reply was empty or cut. If GET works but POST doesn't, something between this computer and the server");
     console.log("     (antivirus HTTPS scanning, a proxy) may intercept MCP traffic: check the TLS issuer with");
     console.log("     openssl s_client -connect host:443 | openssl x509 -noout -issuer, or test from another network.");
@@ -88,16 +116,24 @@ try {
 }
 
 if (reachable) {
-
+ try {
   // Protocol
-  let r = await rpc("initialize", { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "mcp-smoke-test", version: "1" } });
-  check("initialize echoes 2025-06-18", r?.result?.protocolVersion === "2025-06-18", r);
-  check("initialize: capabilities.tools and serverInfo", !!r?.result?.capabilities?.tools && !!r?.result?.serverInfo?.name, r?.result);
-  warnIf("initialize: no instructions for the model", !r?.result?.instructions, "");
-  r = await rpc("initialize", { protocolVersion: "1999-01-01" });
-  check("unknown protocol version → a version the server supports", typeof r?.result?.protocolVersion === "string" && r.result.protocolVersion !== "1999-01-01", r?.result);
-  let p = await post(JSON.stringify({ jsonrpc: "2.0", method: "notifications/initialized" }));
-  check("notification → 202 with no body", p.status === 202 && p.text === "", { status: p.status, body: p.text.slice(0, 100) });
+  let r = init;
+  let p;
+  if (r?.error?.code === -32601) {
+    // Revision 2026-07-28 removed initialize: a stateless server may answer "method not found".
+    record("WARN", "initialize → -32601: a server on a protocol revision without initialize; the initialize checks were skipped", r.error);
+  } else {
+    check("initialize returns a protocolVersion", typeof r?.result?.protocolVersion === "string", r);
+    warnIf(`initialize: asked ${ASKED_VERSION}, the server answered ${r?.result?.protocolVersion} (fine only if it doesn't support ${ASKED_VERSION})`, typeof r?.result?.protocolVersion === "string" && r.result.protocolVersion !== ASKED_VERSION, "");
+    check("initialize: capabilities.tools and serverInfo", !!r?.result?.capabilities?.tools && !!r?.result?.serverInfo?.name, r?.result);
+    warnIf("initialize: no instructions for the model", !r?.result?.instructions, "");
+    if (sessionId) record("PASS", "session: Mcp-Session-Id received and sent on every later request");
+    r = await rpc("initialize", { protocolVersion: "1999-01-01", capabilities: {}, clientInfo: { name: "mcp-smoke-test", version: "1" } });
+    check("unknown protocol version → a version the server supports", typeof r?.result?.protocolVersion === "string" && r.result.protocolVersion !== "1999-01-01", r?.result);
+    p = await post(JSON.stringify({ jsonrpc: "2.0", method: "notifications/initialized" }));
+    check("notification → 202 with no body", p.status === 202 && p.text === "", { status: p.status, body: p.text.slice(0, 100) });
+  }
   r = await rpc("ping");
   check("ping → {}", r?.result && Object.keys(r.result).length === 0, r);
   r = await rpc("tools/list");
@@ -118,24 +154,29 @@ if (reachable) {
   check("invalid request → -32600", parse(p.text)?.error?.code === -32600, p.text.slice(0, 200));
   p = await post("x".repeat(70_000));
   warnIf("oversized body not rejected (413)", p.status !== 413, p.status);
-  const g = await fetch(endpoint, { headers: { Accept: "text/event-stream" }, signal: AbortSignal.timeout(20_000) });
-  check("GET as an MCP client (Accept: text/event-stream) → 405 or an SSE stream", g.status === 405 || (g.headers.get("content-type") ?? "").includes("text/event-stream"), g.status);
-  await g.body?.cancel();
+  const g = await tryFetch(endpoint, { headers: { Accept: "text/event-stream", ...(sessionId ? { "Mcp-Session-Id": sessionId } : {}) } });
+  check("GET as an MCP client (Accept: text/event-stream) → 405 or an SSE stream", !g.error && (g.status === 405 || (g.headers.get("content-type") ?? "").includes("text/event-stream")), g.error ? why(g.error) : g.status);
+  await g.body?.cancel().catch(() => {});
   // A model that opens the URL with a web-fetch tool should learn what it is, not see an error.
-  const plain = await fetch(endpoint, { headers: { Accept: "text/html,*/*" }, signal: AbortSignal.timeout(20_000) });
-  const plainText = await plain.text();
-  warnIf("GET from a browser/fetch tool returns an error: serve a short page saying it's an MCP server and how to connect", !plain.ok || !/mcp/i.test(plainText), `HTTP ${plain.status}`);
+  const plain = await tryFetch(endpoint, { headers: { Accept: "text/html,*/*" } });
+  const plainText = plain.error ? "" : await plain.text().catch(() => "");
+  warnIf("GET from a browser/fetch tool returns an error: serve a short page saying it's an MCP server and how to connect", !!plain.error || !plain.ok || !/mcp/i.test(plainText), plain.error ? why(plain.error) : `HTTP ${plain.status}`);
   // Pre-connection discovery: AI Catalog → MCP Server Card (SEP-2127).
   const origin = new URL(endpoint).origin;
-  const cat = await fetch(`${origin}/.well-known/ai-catalog.json`, { signal: AbortSignal.timeout(20_000) }).catch(() => null);
-  const catalog = cat?.ok ? await cat.json().catch(() => null) : null;
-  warnIf("no /.well-known/ai-catalog.json listing the MCP server card", !catalog?.entries?.some((x) => x.type === "application/mcp-server-card+json"), cat ? `HTTP ${cat.status}` : "unreachable");
+  const cat = await tryFetch(`${origin}/.well-known/ai-catalog.json`);
+  const catalog = cat.ok ? await cat.json().catch(() => null) : null;
+  warnIf("no /.well-known/ai-catalog.json listing the MCP server card", !catalog?.entries?.some((x) => x.type === "application/mcp-server-card+json"), cat.error ? why(cat.error) : `HTTP ${cat.status}`);
   const cardUrl = catalog?.entries?.find((x) => x.type === "application/mcp-server-card+json")?.url ?? `${endpoint.replace(/\/$/, "")}/server-card`;
-  const cardRes = await fetch(cardUrl, { headers: { Accept: "application/mcp-server-card+json" }, signal: AbortSignal.timeout(20_000) }).catch(() => null);
-  const card = cardRes?.ok ? await cardRes.json().catch(() => null) : null;
-  warnIf(`no valid MCP Server Card at ${cardUrl}`, !card?.$schema?.includes("server-card") || !card?.remotes?.length, cardRes ? `HTTP ${cardRes.status}` : "unreachable");
-  const o = await fetch(endpoint, { method: "OPTIONS", headers: { Origin: "https://example.org", "Access-Control-Request-Method": "POST" }, signal: AbortSignal.timeout(20_000) });
-  warnIf("OPTIONS: no CORS (browser-based MCP clients can't connect)", !o.headers.get("access-control-allow-origin"), o.status);
+  const cardRes = await tryFetch(cardUrl, { headers: { Accept: "application/mcp-server-card+json" } });
+  const card = cardRes.ok ? await cardRes.json().catch(() => null) : null;
+  warnIf(`no valid MCP Server Card at ${cardUrl}`, !card?.$schema?.includes("server-card") || !card?.remotes?.length, cardRes.error ? why(cardRes.error) : `HTTP ${cardRes.status}`);
+  if (card) {
+    const type = cardRes.headers.get("content-type") ?? "";
+    warnIf(`Server Card served as "${type}" (expected application/mcp-server-card+json)`, !type.includes("application/mcp-server-card+json"), "");
+    warnIf(`Server Card remotes don't list ${endpoint}`, !card.remotes?.some((x) => x.url === endpoint), card.remotes?.map((x) => x.url));
+  }
+  const o = await tryFetch(endpoint, { method: "OPTIONS", headers: { Origin: "https://example.org", "Access-Control-Request-Method": "POST" } });
+  warnIf("OPTIONS: no CORS (browser-based MCP clients can't connect)", !!o.error || !o.headers.get("access-control-allow-origin"), o.error ? why(o.error) : o.status);
   r = await rpc("tools/call", { name: "no_such_tool_xyz", arguments: {} });
   check("unknown tool → -32602 or isError", r?.error?.code === -32602 || r?.result?.isError === true, r);
   if (tools[0]) {
@@ -198,7 +239,10 @@ if (reachable) {
     check(`latency: every call answered (${summary})`, !failures.length, failures);
     warnIf(`latency: ${times.filter((t) => t > 2000).length} calls over 2 s (often the host)`, times.some((t) => t > 2000), summary);
   }
-
+ } catch (e) {
+  // A timeout or a dropped connection mid-run: report it instead of crashing.
+  record("FAIL", `stopped early: ${why(e)}`, e.stack ?? "");
+ }
 }
 
 const n = (st) => results.filter((x) => x.status === st).length;

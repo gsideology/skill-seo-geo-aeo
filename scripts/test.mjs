@@ -89,6 +89,66 @@ await step("check_sitemap fails a broken sitemap with the expected reasons", () 
   return [r.code === 1 && !missing.length, `exit ${r.code}; missing: ${missing.join(", ")}\n${r.out}`];
 });
 
+await step("check_sitemap accepts hreflang with script and numeric region (es-419, zh-Hant-TW)", () => {
+  const dir = mkdtempSync(join(tmpdir(), "seo-geo-aeo-sitemap-"));
+  const f = join(dir, "sitemap.xml");
+  const alt = (u) => ["en", "es-419", "zh-Hant-TW", "x-default"].map((h, i) => `<xhtml:link rel="alternate" hreflang="${h}" href="https://example.com/${["", "es", "zh", ""][i]}"/>`).join("");
+  const url = (p) => `<url><loc>https://example.com/${p}</loc>${alt()}</url>`;
+  writeFileSync(f, `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">${url("")}${url("es")}${url("zh")}</urlset>\n`);
+  const r = node(join(skill, "scripts/check_sitemap.mjs"), [f]);
+  rmSync(dir, { recursive: true, force: true });
+  return [r.code === 0 && !/bad hreflang/.test(r.out), r.out];
+});
+
+await step("check_sitemap never reads a local file named by a sitemap index", () => {
+  const dir = mkdtempSync(join(tmpdir(), "seo-geo-aeo-index-"));
+  const secret = join(dir, "secret.xml");
+  writeFileSync(secret, `<?xml version="1.0"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>https://example.com/leaked</loc></url></urlset>`);
+  const index = join(dir, "index.xml");
+  writeFileSync(index, `<?xml version="1.0"?><sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><sitemap><loc>${secret}</loc></sitemap></sitemapindex>`);
+  const r = node(join(skill, "scripts/check_sitemap.mjs"), [index]);
+  rmSync(dir, { recursive: true, force: true });
+  return [r.code === 1 && /not an absolute http\(s\) URL/.test(r.out) && !/leaked|1 URLs/.test(r.out), r.out];
+});
+
+await step("check_sitemap rejects a non-numeric --concurrency before any request", () => {
+  const r = node(join(skill, "scripts/check_sitemap.mjs"), [join(root, "tests/fixtures/sitemap-bad.xml"), "--concurrency", "x"]);
+  return [r.code === 2 && /--concurrency must be a positive integer/.test(r.out), `exit ${r.code}\n${r.out}`];
+});
+
+/** Like node(), but asynchronous, so an HTTP server in this process can answer the child. */
+function nodeAsync(script, scriptArgs) {
+  return new Promise((res) => {
+    const c = spawn(process.execPath, [script, ...scriptArgs], { cwd: root });
+    let out = "";
+    c.stdout.on("data", (d) => (out += d));
+    c.stderr.on("data", (d) => (out += d));
+    c.on("close", (code) => res({ code, out }));
+  });
+}
+
+await step("check_ai_access follows robots.txt redirects and reads unquoted noindex", async () => {
+  const { createServer: createHttp } = await import("node:http");
+  const page = (robots) => `<!doctype html><html lang=en><head><title>T</title><meta name=description content=D>${robots}<link rel=canonical href=/p></head><body><h1>H</h1></body></html>`;
+  const srv = createHttp((req, res) => {
+    if (req.url === "/robots.txt") return res.writeHead(301, { Location: "/real-robots.txt" }).end();
+    if (req.url === "/real-robots.txt") return res.writeHead(200, { "Content-Type": "text/plain" }).end("User-agent: *\nDisallow: /admin/\nSitemap: http://127.0.0.1/sitemap.xml\n");
+    if (req.url === "/p") return res.writeHead(200, { "Content-Type": "text/html" }).end(page(""));
+    if (req.url === "/hidden") return res.writeHead(200, { "Content-Type": "text/html" }).end(page("<meta name=robots content=noindex>"));
+    res.writeHead(404).end();
+  });
+  await new Promise((r) => srv.listen(0, "127.0.0.1", r));
+  const base = `http://127.0.0.1:${srv.address().port}/`;
+  try {
+    const a = await nodeAsync(join(skill, "scripts/check_ai_access.mjs"), [base, "--paths", "p", "--min-words", "0"]);
+    const b = await nodeAsync(join(skill, "scripts/check_ai_access.mjs"), [base, "--paths", "hidden", "--min-words", "0"]);
+    const ok = a.code === 0 && /robots\.txt redirects/.test(a.out) && /PASS GPTBot/.test(a.out) && b.code === 1 && /FAIL noindex/.test(b.out);
+    return [ok, `redirect run: exit ${a.code}\n${tail(a.out, 20)}\nunquoted noindex run: exit ${b.code}\n${tail(b.out, 10)}`];
+  } finally {
+    srv.close();
+  }
+});
+
 /* ------------------------------------------------------------------ PHP: template + fixtures over HTTP */
 
 function findPhp() {
@@ -143,7 +203,18 @@ if (!php) {
       const endpoint = `${origin}/a/mcp.php`;
       await step("mcp_smoke_test: PHP template + reference cases, no failures and no warnings", () => {
         const r = node(join(skill, "scripts/mcp_smoke_test.mjs"), [endpoint, "--cases", join(skill, "templates/cases.example.json"), "--repeat", "3"]);
-        return [r.code === 0 && /ALL PASSED/.test(r.out) && !/^WARN/m.test(r.out), r.out];
+        // The one tolerated warning depends on this computer, not on the code: antivirus cutting MCP-Protocol-Version requests.
+        const warns = r.out.split("\n").filter((l) => /^WARN/.test(l) && !/MCP-Protocol-Version header are cut/.test(l));
+        return [r.code === 0 && /ALL PASSED/.test(r.out) && !warns.length, r.out];
+      });
+      await step("PHP template serves the Server Card at <endpoint>/server-card (type, CORS, ETag)", async () => {
+        const r = await fetch(`${endpoint}/server-card`);
+        const body = await r.text();
+        const etag = r.headers.get("etag");
+        const again = etag ? await fetch(`${endpoint}/server-card`, { headers: { "If-None-Match": etag } }) : null;
+        await again?.body?.cancel();
+        const ok = r.status === 200 && r.headers.get("content-type") === "application/mcp-server-card+json" && r.headers.get("access-control-allow-origin") === "*" && JSON.parse(body).remotes?.[0]?.url === endpoint && again?.status === 304;
+        return [ok, `HTTP ${r.status} ${r.headers.get("content-type")} etag ${etag} → ${again?.status}\n${body.slice(0, 300)}`];
       });
       await step("mcp_smoke_test fails a wrong expectation", () => {
         const bad = join(docroot, "cases-wrong.json");

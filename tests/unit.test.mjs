@@ -2,7 +2,7 @@
 // dependencies: node tests/unit.test.mjs (exit code 1 on failure).
 
 import assert from "node:assert/strict";
-import { parseRobots, rulesFor, isAllowed, inspectHtml, serverTextWords, AGENTS } from "../skills/seo-geo-aeo/scripts/check_ai_access.mjs";
+import { parseRobots, rulesFor, isAllowed, inspectHtml, serverTextWords, attr, decode, AGENTS } from "../skills/seo-geo-aeo/scripts/check_ai_access.mjs";
 import { crc32, listZip } from "../scripts/build-zip.mjs";
 
 let passed = 0;
@@ -120,6 +120,19 @@ test("inspectHtml reads title, description, robots, canonical, h1, JSON-LD", () 
   assert.equal(h.jsonld[0].sameAs, true);
   assert.equal(h.jsonld[1].ok, false);
   assert.equal(h.words, 9); // title 3 + h1 2 + h1 1 + p 3; scripts and JSON-LD not counted
+});
+
+test("inspectHtml reads unquoted attributes (minified HTML)", () => {
+  const h = inspectHtml("<html lang=fr><head><meta name=robots content=noindex><meta name=description content=Courte><link rel=canonical href=https://example.com/x></head><body><h1>x</h1></body></html>");
+  assert.equal(h.lang, "fr");
+  assert.equal(h.robots, "noindex");
+  assert.equal(h.description, "Courte");
+  assert.equal(h.canonical, "https://example.com/x");
+});
+
+test("attr ignores look-alike attribute names; decode handles hex references without double decoding", () => {
+  assert.equal(attr('<meta data-name="x" name="robots">', "name"), "robots");
+  assert.equal(decode("l&#x27;outil &#39;a&#39; &amp;#39; &copy;"), "l'outil 'a' &#39; &copy;");
 });
 
 test("serverTextWords skips scripts, styles and comments", () => {
