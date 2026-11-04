@@ -36,7 +36,7 @@ skills/seo-geo-aeo/
     sources.md                     every source with the date checked
   templates/                       robots.txt, JSON-LD (tool page, guide), citation-check.csv,
                                    mcp-server.php, cases.example.json, server-card / ai-catalog examples,
-                                   webmcp-register.ts, webmcp-shim.js, agents.md, ai-assistants-page.md,
+                                   webmcp-register.ts, webmcp-shim.js, agents.template.md, ai-assistants-page.md,
                                    htaccess-snippets.conf
   scripts/                         check_sitemap.mjs, check_ai_access.mjs, mcp_smoke_test.mjs
 .claude-plugin/                    plugin.json and marketplace.json (Claude Code plugin)

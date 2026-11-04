@@ -7,7 +7,7 @@
   {
    "identifier": "urn:air:fixture.test:mcp:tools",
    "type": "application/mcp-server-card+json",
-   "url": "{{ORIGIN}}/server-card.json",
+   "url": "{{ORIGIN}}/a/mcp.php/server-card",
    "representativeQueries": [
     "merge pdf",
     "compress an image"
